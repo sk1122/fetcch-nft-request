@@ -1,55 +1,196 @@
-"use client";
+"use client"
 
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react"
+import Image from "next/image"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { useWallet as useAptosWallet } from "@aptos-labs/wallet-adapter-react"
+import { Close as DialogClose } from "@radix-ui/react-dialog"
+import { useFilter } from "@react-aria/i18n"
+import { useWallet } from "@solana/wallet-adapter-react"
+import base58 from "bs58"
+import { Loader2, User, X } from "lucide-react"
+import toast from "react-hot-toast"
+import { useAccount, useNetwork, useSignMessage, useSwitchNetwork } from "wagmi"
+
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "./ui/dialog";
-import { User, X } from "lucide-react";
-import { Close as DialogClose } from "@radix-ui/react-dialog";
-import ChainSelectModal from "./chain-select-modal";
-import TokensList from "./tokens-list";
-import { Chain, chainData } from "@/lib/data";
-import { useSearchParams } from "next/navigation";
-import { useFilter } from "@react-aria/i18n";
-import Image from "next/image";
+  aptosChainData,
+  Chain,
+  evmChainData,
+  solanaChainData,
+} from "@/lib/data"
+import ChainSelectModal from "@/components/chain-select-modal"
+import TokensList from "@/components/token-list"
 
-const RequestModal = ({ children }: { children: React.ReactNode }) => {
-  const [chainSelect, setChainSelect] = useState(false);
-  const searchParams = useSearchParams();
+import { useConnectedWallet } from "./providers/providers"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog"
+import { parseUnits } from "viem"
 
-  const selectedChain = searchParams.get("chain");
-  const selectedToken = searchParams.get("token");
+const RequestModal = ({
+  open,
+  setOpen,
+}: {
+  open: boolean
+  setOpen: React.Dispatch<React.SetStateAction<boolean>>
+}) => {
+  const [chainSelect, setChainSelect] = useState(false)
+  const [chainData, setChainData] = useState<Chain[]>([...evmChainData, ...solanaChainData, ...aptosChainData])
+  const [loading, setLoading] = useState(false)
+  const router = useRouter()
+  const pathname = usePathname()
+  const { addressChain, connectedWallet } = useConnectedWallet()
+
+  useEffect(() => {
+    console.log("addressChain: ", addressChain)
+    if (addressChain === "evm") {
+      setChainData(evmChainData)
+    } else if (addressChain === "solana") {
+      setChainData(solanaChainData)
+    } else if (addressChain === "aptos") {
+      setChainData(aptosChainData)
+    }
+  }, [addressChain, open])
+
+  const searchParams = useSearchParams()
+
+  const selectedChain = searchParams.get("chain")
+  const selectedToken = searchParams.get("token")
 
   let { contains } = useFilter({
     sensitivity: "base",
-  });
+  })
 
-  const selectedChainData =
-    selectedChain &&
-    chainData.filter((chain) => contains(chain.name, selectedChain));
+  const selectedChainData = selectedChain
+    ? chainData.filter((chain) => contains(chain.name.toLowerCase(), selectedChain.toLowerCase()))
+    : chainData
 
   const selectedTokenData =
-    selectedChainData &&
-    selectedToken &&
-    selectedChainData[0].tokens.filter((token) =>
-      contains(token.address, selectedToken),
-    );
+    selectedChainData && selectedToken
+      ? selectedChainData[0].tokens.filter((token) =>
+          contains(token.address, selectedToken)
+        )
+      : selectedChainData[0].tokens
 
-  const tokenImg = selectedTokenData && selectedTokenData[0]?.logoURI;
-  const chainImg = selectedChainData && selectedChainData[0]?.logoURI;
+  const tokenImg = selectedTokenData && selectedTokenData[0]?.logoURI
+  const chainImg = selectedChainData && selectedChainData[0]?.logoURI
+
+  console.log("🔗 ", chainData[0].name)
+
+  const { chains, pendingChainId, switchNetworkAsync } = useSwitchNetwork()
+  const { chain: chainD } = useNetwork()
+  const { address } = useAccount()
+  const { signMessageAsync } = useSignMessage()
+  const { signMessage, publicKey } = useWallet()
+  const { signMessage: signAptosMessage, account } = useAptosWallet()
+
+  const request = async () => {
+    setLoading(true)
+
+    let request: any = {
+      // receiver: connectedWallet === "evm" ? address : connectedWallet === "solana" ? publicKey?.toBase58() : account?.address.toString(),
+      receiver: searchParams.get("address"),
+      // payer: searchParams.get("address"),
+      actions: [
+        {
+          type: "PAYMENT",
+          data: {
+            token: selectedTokenData[0].address,
+            chain: selectedChainData[0].id,
+            receiver: connectedWallet === "evm" ? address : connectedWallet === "solana" ? publicKey?.toBase58() : account?.address.toString(),
+            amount: {
+              amount: parseUnits(searchParams.get("amount") as string, selectedTokenData[0].decimals).toString(),
+              currency: "CRYPTO",
+            },
+          },
+        },
+      ],
+      message: "Message from request.fetcch.xyz",
+      label: "request.fetcch.xyz",
+    }
+
+    const req = await fetch("/api/generateMessage", {
+      method: "POST",
+      body: JSON.stringify(request),
+      headers: {
+        "content-type": "application/json"
+      }
+    })
+
+    const res = await req.json()
+
+    const message = res.data.data.message
+    const timestamp = res.data.data.timestamp
+
+    console.log(res, message)
+
+    let hash = ""
+    if (connectedWallet === "evm") {
+      if (chainD?.id !== selectedChainData[0].chainId)
+        await switchNetworkAsync!(selectedChainData[0].chainId)
+      console.log(message, "MESSAFGE")
+      const signature = await signMessageAsync({
+        message: message,
+      })
+
+      console.log(signature)
+
+      hash = signature
+    } else if (connectedWallet === "solana") {
+      const signature = base58.encode(await signMessage!(Buffer.from(message)))
+
+      console.log(signature)
+
+      hash = signature
+    } else if (connectedWallet === "aptos") {
+      const signature =
+        "0x" +
+        (await signAptosMessage({
+          message: message,
+          nonce: timestamp,
+        })!)!.signature
+
+      console.log(signature)
+
+      hash = signature
+    }
+
+    request.signature = hash
+
+    const req2 = await fetch("/api/createRequest", {
+      method: "POST",
+      body: JSON.stringify(request),
+      headers: {
+        "content-type": "application/json"
+      }
+    })
+
+    const res2 = await req2.json()
+
+    if(req2.status >= 200 && req2.status <= 299) {
+      toast.success(`Request successfully created with id ${res2.data.id}!`)
+      navigator.clipboard.writeText(`https://request.fetcch.xyz/request/${res2.data.id}`)
+      setOpen(false)
+    }
+
+    setLoading(false)
+  }
+
+  const createQueryString = useCallback(
+    (name: string, value: string) => {
+      const params = new URLSearchParams(searchParams)
+      params.set(name, value)
+
+      return params.toString()
+    },
+    [searchParams]
+  )
 
   return (
-    <Dialog>
-      <DialogTrigger asChild>{children}</DialogTrigger>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="w-full overflow-hidden p-6 sm:max-w-[392px] sm:rounded-[20px]">
         {chainSelect ? (
           <ChainSelectModal chains={chainData} setOpen={setChainSelect}>
-            <div></div>
             <TokensList
+              chains={chainData}
               selectedChain={
                 selectedChainData ? selectedChainData[0] : chainData[0]
               }
@@ -98,6 +239,8 @@ const RequestModal = ({ children }: { children: React.ReactNode }) => {
                           <Image
                             src={tokenImg}
                             alt="token_image"
+                            priority
+                            className="rounded-full"
                             width={32}
                             height={32}
                           />
@@ -108,6 +251,8 @@ const RequestModal = ({ children }: { children: React.ReactNode }) => {
                           <Image
                             src={chainImg}
                             alt="token_image"
+                            priority
+                            className="rounded-full"
                             width={32}
                             height={32}
                           />
@@ -116,7 +261,7 @@ const RequestModal = ({ children }: { children: React.ReactNode }) => {
                     </div>
                     <input
                       className="pointer-events-none overflow-clip truncate border-none bg-transparent text-primary outline-none placeholder:text-[#6893F0] focus:outline-none group-hover:placeholder:text-primary"
-                      placeholder="Select Chain and token"
+                      placeholder={`${selectedChainData[0].name} and ${selectedTokenData[0].name}`}
                       type="text"
                       readOnly
                     />
@@ -134,6 +279,8 @@ const RequestModal = ({ children }: { children: React.ReactNode }) => {
                         <Image
                           src={tokenImg}
                           alt="token_image"
+                          priority
+                          className="rounded-full"
                           width={32}
                           height={32}
                         />
@@ -144,26 +291,30 @@ const RequestModal = ({ children }: { children: React.ReactNode }) => {
                         <Image
                           src={chainImg}
                           alt="token_image"
+                          priority
+                          className="rounded-full"
                           width={32}
                           height={32}
                         />
                       ) : null}
                     </div>
                   </div>
-                  <div className="flex flex-col items-start">
+                  <div className="w-full">
                     <input
                       className="overflow-clip truncate border-none bg-transparent text-lg text-primary outline-none placeholder:text-[#6893F0] focus:outline-none group-hover:placeholder:text-primary"
+                      onChange={(e) => 
+                        router.push(
+                          pathname + "?" + createQueryString("amount", e.target.value)
+                        )
+                      }
+                      type="number"
                       placeholder="0"
-                    />
-                    <input
-                      className="pointer-events-none overflow-clip truncate border-none bg-transparent text-xs text-primary outline-none placeholder:text-[#6893F0] focus:outline-none group-hover:placeholder:text-primary"
-                      placeholder="0.00"
-                      readOnly
                     />
                   </div>
                 </div>
               </div>
-              <button className="w-full rounded-full bg-primary py-4 text-white">
+              <button onClick={() => request()} className="w-full flex justify-center items-center rounded-full bg-primary py-4 text-white">
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Request
               </button>
             </div>
@@ -171,7 +322,7 @@ const RequestModal = ({ children }: { children: React.ReactNode }) => {
         )}
       </DialogContent>
     </Dialog>
-  );
-};
+  )
+}
 
-export default RequestModal;
+export default RequestModal

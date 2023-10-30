@@ -1,45 +1,48 @@
-"use client";
+"use client"
 
-import * as ScrollArea from "@radix-ui/react-scroll-area";
-import type { Dispatch, SetStateAction } from "react";
-import { useCallback, useState } from "react";
-import { useFilter } from "@react-aria/i18n";
-import { type Chain } from "@/lib/data";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ExternalLink, Search } from "lucide-react";
-import Image from "next/image";
-import { cn } from "@/lib/utils";
+import type { Dispatch, SetStateAction } from "react"
+import { Suspense, useCallback, useEffect, useState } from "react"
+import Image from "next/image"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import * as ScrollArea from "@radix-ui/react-scroll-area"
+import { useFilter } from "@react-aria/i18n"
+import { Divide, ExternalLink, Search } from "lucide-react"
+
+import { type Chain } from "@/lib/data"
+import { cn } from "@/lib/utils"
 
 type TokensListProps = {
-  selectedChain: Chain;
-  setSelectToken: Dispatch<SetStateAction<boolean>>;
-};
+  selectedChain: Chain
+  setSelectToken: Dispatch<SetStateAction<boolean>>
+  chains: Chain[]
+}
 
 const TokensList = ({
   selectedChain: { tokens },
+  chains,
   setSelectToken,
 }: TokensListProps) => {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams()!;
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()!
 
   const createQueryString = useCallback(
     (name: string, value: string) => {
-      const params = new URLSearchParams(searchParams);
-      params.set(name, value);
+      const params = new URLSearchParams(searchParams)
+      params.set(name, value)
 
-      return params.toString();
+      return params.toString()
     },
-    [searchParams],
-  );
+    [searchParams]
+  )
 
   let { contains } = useFilter({
     sensitivity: "base",
-  });
+  })
 
-  const [token, setToken] = useState("");
-  const filteredTokens = tokens.filter((item) => contains(item.name, token));
-  const selectedToken = searchParams.get("token") ?? null;
+  const [token, setToken] = useState("")
+  const filteredTokens = tokens.filter((item) => contains(item.name, token))
+  const selectedToken = searchParams.get("token") ?? null
 
   return (
     <div>
@@ -59,34 +62,39 @@ const TokensList = ({
               <button
                 onClick={() => {
                   router.push(
-                    pathname + "?" + createQueryString("token", token.address),
-                  );
-                  setSelectToken(false);
+                    pathname + "?" + createQueryString("token", token.address) + "&" + createQueryString("chain", chains[0].name)
+                  )
+                  setSelectToken(false)
                 }}
                 className={cn(
                   "group flex cursor-pointer space-x-3 rounded-md p-2 hover:bg-[#E3ECFF]",
                   {
                     "bg-[#E3ECFF]": selectedToken === token.address,
-                  },
+                  }
                 )}
                 key={idx}
               >
-                <Image
-                  src={token.logoURI}
-                  alt="token_logo"
-                  width={48}
-                  height={48}
-                  className="h-12 w-12 flex-shrink-0 rounded-full"
-                />
+                <Suspense
+                  fallback={
+                    <div className="h-8 w-8 flex-shrink-0 rounded-full bg-[#B0C8FE]" />
+                  }
+                >
+                  <Image
+                    src={token.logoURI}
+                    alt="token_logo"
+                    priority
+                    width={48}
+                    height={48}
+                    className="h-12 w-12 flex-shrink-0 rounded-full"
+                  />
+                </Suspense>
                 <div className="flex flex-col items-start space-y-1">
                   <h4 className="text-lg font-medium text-primary">
                     {token.symbol}
                   </h4>
                   <div className="text-xs text-primary">
-                    <span className="transition-all duration-200 group-hover:hidden">
-                      {token.symbol}
-                    </span>
-                    <span className="hidden items-center transition-all duration-200 group-hover:flex">
+                    <span className="group-hover:hidden">{token.symbol}</span>
+                    <span className="hidden items-center group-hover:flex">
                       <span className="w-20 truncate ">{token.address}</span>
                       <ExternalLink className="storke-primary inline h-3 w-3" />
                     </span>
@@ -98,7 +106,7 @@ const TokensList = ({
         </ScrollArea.Viewport>
       </ScrollArea.Root>
     </div>
-  );
-};
+  )
+}
 
-export default TokensList;
+export default TokensList

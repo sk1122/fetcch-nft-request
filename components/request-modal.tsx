@@ -19,6 +19,7 @@ import {
   solanaChainData,
 } from "@/lib/data"
 import ChainSelectModal from "@/components/chain-select-modal"
+import RequestNFTModal from "./request-nft-modal"
 import TokensList from "@/components/token-list"
 
 import { useConnectedWallet } from "./providers/providers"
@@ -32,6 +33,16 @@ const RequestModal = ({
   open: boolean
   setOpen: React.Dispatch<React.SetStateAction<boolean>>
 }) => {
+  const [requestNFTModalOpen, setRequestNFTModalOpen] = useState(false);
+
+const openRequestNFTModal = () => {
+  setRequestNFTModalOpen(true);
+};
+
+const closeRequestNFTModal = () => {
+  setRequestNFTModalOpen(false);
+};
+
   const [chainSelect, setChainSelect] = useState(false)
   const [chainData, setChainData] = useState<Chain[]>([...evmChainData, ...solanaChainData, ...aptosChainData])
   const [loading, setLoading] = useState(false)
@@ -187,21 +198,23 @@ const RequestModal = ({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="w-full overflow-hidden p-6 sm:max-w-[392px] sm:rounded-[20px]">
-        {chainSelect ? (
-          <ChainSelectModal chains={chainData} setOpen={setChainSelect}>
-            <TokensList
-              chains={chainData}
-              selectedChain={
-                selectedChainData ? selectedChainData[0] : chainData[0]
-              }
-              setSelectToken={setChainSelect}
-            />
-          </ChainSelectModal>
-        ) : (
+      {chainSelect ? (
+        <ChainSelectModal chains={chainData} setOpen={setChainSelect}>
+          <TokensList
+            chains={chainData}
+            selectedChain={selectedChainData ? selectedChainData[0] : chainData[0]}
+            setSelectToken={setChainSelect}
+          />
+        </ChainSelectModal>
+      ) : requestNFTModalOpen ? (
+        <RequestNFTModal open={requestNFTModalOpen} setOpen={closeRequestNFTModal} />
+      ) 
+
+        : (
           <>
             <DialogHeader className="flex w-full flex-row items-center justify-between">
               <DialogTitle className="font-manrope text-3xl font-extrabold">
-                Request
+                Request 
               </DialogTitle>
               <DialogClose className="w-fit rounded-full border-2 border-primary p-2 opacity-70 transition-opacity hover:opacity-100 focus:outline-none disabled:pointer-events-none data-[state=open]:bg-primary data-[state=open]:text-primary">
                 <X className="h-4 w-4 font-bold text-primary" strokeWidth={4} />
@@ -268,36 +281,26 @@ const RequestModal = ({
                   </div>
                 </div>
               </button>
+              <button  className="group w-full text-left" onClick={openRequestNFTModal}>
               <div className="rounded-xl border-2 border-primary bg-[#E3ECFF] pt-4">
-                <span className="px-4 font-manrope font-bold">
-                  Request Amount
+                <span className="px-4 font-manrope font-bold text-start w-full">
+                  Select NFT
                 </span>
                 <div className="flex items-center space-x-3 p-4">
                   <div className="relative">
                     <div className="h-8 w-8 flex-shrink-0 rounded-full bg-[#B0C8FE]">
                       {tokenImg ? (
                         <Image
-                          src={tokenImg}
-                          alt="token_image"
-                          priority
-                          className="rounded-full"
-                          width={32}
-                          height={32}
+                        src={tokenImg}
+                        alt="token_image"
+                        priority
+                        className="rounded-full"
+                        width={32}
+                        height={32}
                         />
-                      ) : null}
+                        ) : null}
                     </div>
-                    <div className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full border border-[3E3ECFF] bg-[#B0C8FE]">
-                      {chainImg ? (
-                        <Image
-                          src={chainImg}
-                          alt="token_image"
-                          priority
-                          className="rounded-full"
-                          width={32}
-                          height={32}
-                        />
-                      ) : null}
-                    </div>
+
                   </div>
                   <div className="w-full">
                     <input
@@ -305,14 +308,15 @@ const RequestModal = ({
                       onChange={(e) => 
                         router.push(
                           pathname + "?" + createQueryString("amount", e.target.value)
-                        )
-                      }
-                      type="number"
-                      placeholder="0"
-                    />
+                          )
+                        }
+                        type="number"
+                        placeholder="0"
+                        />
                   </div>
                 </div>
               </div>
+              </button>
               <button onClick={() => request()} className="w-full flex justify-center items-center rounded-full bg-primary py-4 text-white">
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Request

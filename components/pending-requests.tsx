@@ -104,6 +104,7 @@ const PendingRequests = () => {
               {requests.map((request: any) => (
                 <>
                   {!request.executed && <Request request={request} />}
+                {/* remove this */}
                   {!request.executed && <Request request={request} />}
                 </>
               ))}

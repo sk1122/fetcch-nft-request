@@ -238,7 +238,7 @@ const closeRequestNFTModal = () => {
                 </div>
               </div>
               <button
-                className="group w-full text-left"
+                className="group w-full text-left hidden"
                 onClick={() => setChainSelect(true)}
               >
                 <div className="rounded-xl border-2 border-primary bg-[#E3ECFF] pt-4 group-hover:bg-primary/50">
@@ -282,7 +282,7 @@ const closeRequestNFTModal = () => {
                 </div>
               </button>
               <button  className="group w-full text-left" onClick={openRequestNFTModal}>
-              <div className="rounded-xl border-2 border-primary bg-[#E3ECFF] pt-4">
+              <div className="rounded-xl border-2 border-primary bg-[#E3ECFF] pt-4 group-hover:bg-primary/50">
                 <span className="px-4 font-manrope font-bold text-start w-full">
                   Select NFT
                 </span>
@@ -303,7 +303,7 @@ const closeRequestNFTModal = () => {
 
                   </div>
                   <div className="w-full">
-                    <input
+                    <input readOnly
                       className="overflow-clip truncate border-none bg-transparent text-lg text-primary outline-none placeholder:text-[#6893F0] focus:outline-none group-hover:placeholder:text-primary"
                       onChange={(e) => 
                         router.push(

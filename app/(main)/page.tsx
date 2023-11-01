@@ -37,7 +37,7 @@ const LandingPage = () => {
           src={collection3}
           alt="collection3"
           priority
-          className="absolute top-0 w-9/12 select-none md:w-6/12 lg:-bottom-28 lg:right-20 lg:w-1/12 xl:-bottom-28 xl:right-52 2xl:-bottom-36 2xl:right-32 2xl:w-[12%]"
+          className="absolute hidden top-0 w-9/12 select-none md:w-6/12 lg:block lg:-bottom-28 lg:right-20 lg:w-1/12 xl:-bottom-28 xl:right-52 2xl:-bottom-36 2xl:right-32 2xl:w-[12%]"
         />
 
         <WalletsModal triggerClasses="flex items-start lg:items-center lg:mx-auto" />
@@ -46,7 +46,7 @@ const LandingPage = () => {
           src={collection4}
           alt="collection4"
           priority
-          className="absolute -bottom-52 right-2 w-8/12 select-none md:w-6/12 lg:-bottom-3 lg:left-20 xl:-bottom-3 xl:left-60 lg:w-1/12  2xl:-bottom-36 2xl:left-96 2xl:w-[12%]"
+          className="absolute hidden -bottom-52 right-2 w-8/12 select-none lg:block md:w-6/12 lg:-bottom-3 lg:left-20 xl:-bottom-3 xl:left-60 lg:w-1/12  2xl:-bottom-36 2xl:left-96 2xl:w-[12%]"
         />
       </div>
     </div>

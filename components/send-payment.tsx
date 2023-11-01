@@ -1,8 +1,32 @@
 "use client"
 
+import { useState } from "react"
+import Image from "next/image"
+import { useSearchParams } from "next/navigation"
+import { useWallet as useAptosWallet } from "@aptos-labs/wallet-adapter-react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
+import { useFilter } from "@react-aria/i18n"
+import { useWallet } from "@solana/wallet-adapter-react"
+import { Connection, VersionedTransaction } from "@solana/web3.js"
+import * as aptos from "aptos"
+import base58 from "bs58"
 import { Loader2, X } from "lucide-react"
+import toast from "react-hot-toast"
+import { formatUnits } from "viem"
+import {
+  useAccount,
+  useNetwork,
+  useSendTransaction,
+  useSwitchNetwork,
+} from "wagmi"
 
+import {
+  aptosChainData,
+  Chain,
+  evmChainData,
+  solanaChainData,
+  Token,
+} from "@/lib/data"
 import {
   Dialog,
   DialogContent,
@@ -10,20 +34,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { formatUnits } from "viem"
-import { useState } from "react"
+
 import { useConnectedWallet } from "./providers/providers"
-import { useAccount, useNetwork, useSendTransaction, useSwitchNetwork } from "wagmi"
-import { useWallet } from "@solana/wallet-adapter-react"
-import { useWallet as useAptosWallet } from "@aptos-labs/wallet-adapter-react"
-import { useSearchParams } from "next/navigation"
-import { useFilter } from "@react-aria/i18n"
-import { Chain, Token, aptosChainData, evmChainData, solanaChainData } from "@/lib/data"
-import { Connection, VersionedTransaction } from "@solana/web3.js"
-import base58 from "bs58"
-import * as aptos from "aptos"
-import toast from "react-hot-toast"
-import Image from "next/image"
+// remove this
+import nftImage from "@/public/assets/nftcardimage.png"
+import NftCard from "./nft-card"
 
 const SendPayment = ({
   receiver,
@@ -32,18 +47,22 @@ const SendPayment = ({
   decimals,
   tokenName,
   chain,
-  id
+  id,
 }: {
   receiver: string
   token: string
-  amount: string,
-  decimals: number,
-  tokenName: string,
-  chain: number,
+  amount: string
+  decimals: number
+  tokenName: string
+  chain: number
   id: number
 }) => {
   const [loading, setLoading] = useState(false)
-  const [chainData, setChainData] = useState<Chain[]>([...evmChainData,  ...solanaChainData, ...aptosChainData])
+  const [chainData, setChainData] = useState<Chain[]>([
+    ...evmChainData,
+    ...solanaChainData,
+    ...aptosChainData,
+  ])
 
   const { addressChain, connectedWallet } = useConnectedWallet()
 
@@ -72,16 +91,16 @@ const SendPayment = ({
     sensitivity: "base",
   })
 
-  const selectedChainData: Chain[] =
-    (selectedChain) ?
-    chainData.filter((chain) => selectedChain === chain.id) : []
+  const selectedChainData: Chain[] = selectedChain
+    ? chainData.filter((chain) => selectedChain === chain.id)
+    : []
 
   let selectedTokenData: Token[] =
-    ((selectedChainData &&
-    selectedToken) ?
-    selectedChainData[0].tokens.filter((token) =>
-      contains(token.address, selectedToken)
-    ) : []) ?? []
+    (selectedChainData && selectedToken
+      ? selectedChainData[0].tokens.filter((token) =>
+          contains(token.address, selectedToken)
+        )
+      : []) ?? []
 
   const tokenImg = selectedTokenData && selectedTokenData[0]?.logoURI
   const chainImg = selectedChainData && selectedChainData[0]?.logoURI
@@ -105,19 +124,24 @@ const SendPayment = ({
               chain: chain,
               amount: {
                 amount,
-                currency: "CRYPTO"
+                currency: "CRYPTO",
               },
-              payer: connectedWallet === "evm" ? accountAddress : connectedWallet === "solana" ? publicKey?.toBase58() : account?.address.toString(),
+              payer:
+                connectedWallet === "evm"
+                  ? accountAddress
+                  : connectedWallet === "solana"
+                  ? publicKey?.toBase58()
+                  : account?.address.toString(),
               fromChain: selectedChainData[0].id,
-              fromToken: (selectedTokenData![0] as Token).address
-            }
-          }
-        ]
+              fromToken: (selectedTokenData![0] as Token).address,
+            },
+          },
+        ],
       }
-      
+
       const req = await fetch("/api/buildTransaction", {
         method: "POST",
-        body: JSON.stringify(actions)
+        body: JSON.stringify(actions),
       })
 
       const res = await req.json()
@@ -127,22 +151,23 @@ const SendPayment = ({
 
       console.log(res, transactions)
 
-      for(let i = 0; i < transactions.length; i++) {
+      for (let i = 0; i < transactions.length; i++) {
         const tx = transactions[i]
 
         console.log(tx, "transaction")
 
-        let hash = ''
-        if(connectedWallet === "evm") {
-          if(chainD?.id !== selectedChainData[0].chainId) await switchNetworkAsync!(selectedChainData[0].chainId)
+        let hash = ""
+        if (connectedWallet === "evm") {
+          if (chainD?.id !== selectedChainData[0].chainId)
+            await switchNetworkAsync!(selectedChainData[0].chainId)
 
           console.log({
             ...tx.tx,
-            gasPrice: undefined
+            gasPrice: undefined,
           })
           const transaction = await sendTransactionAsync({
             ...tx.tx,
-            gasPrice: undefined
+            gasPrice: undefined,
           })
 
           console.log(transaction)
@@ -150,7 +175,9 @@ const SendPayment = ({
           hash = transaction.hash
         } else if (connectedWallet === "solana") {
           const txData = VersionedTransaction.deserialize(base58.decode(tx.tx))
-          const connection = new Connection("https://solana-mainnet.g.alchemy.com/v2/LZLe8tHrIZ06MnZlxn-L4Fo5aj7iIdgI")
+          const connection = new Connection(
+            "https://solana-mainnet.g.alchemy.com/v2/LZLe8tHrIZ06MnZlxn-L4Fo5aj7iIdgI"
+          )
 
           const transaction = await sendTransaction!(txData, connection)
 
@@ -169,27 +196,40 @@ const SendPayment = ({
           hash = transaction
         }
 
-        if(transactions.length === 1 || (tx.type && (tx.type === "PAYMENT_TOKEN" || tx.type === "OTHER" || tx.type === "PAYMENT_NATIVE"))) {
+        if (
+          transactions.length === 1 ||
+          (tx.type &&
+            (tx.type === "PAYMENT_TOKEN" ||
+              tx.type === "OTHER" ||
+              tx.type === "PAYMENT_NATIVE"))
+        ) {
           await fetch("/api/updatePaymentRequest", {
             method: "POST",
             body: JSON.stringify({
               id: Number(id),
               executed: true,
-              payer: connectedWallet === "evm" ? accountAddress : connectedWallet === "solana" ? publicKey?.toBase58() : account?.address.toString(),
-              actions: [{
-                type: actions.actions[0].type,
-                data: actions.actions[0].data,
-                executionData: {
-                  hash,
-                  chain: chain,
-                  timestamp: new Date().getTime() / 1000
-                }
-              }]
-            })
+              payer:
+                connectedWallet === "evm"
+                  ? accountAddress
+                  : connectedWallet === "solana"
+                  ? publicKey?.toBase58()
+                  : account?.address.toString(),
+              actions: [
+                {
+                  type: actions.actions[0].type,
+                  data: actions.actions[0].data,
+                  executionData: {
+                    hash,
+                    chain: chain,
+                    timestamp: new Date().getTime() / 1000,
+                  },
+                },
+              ],
+            }),
           })
-    
+
           toast.success("Payment successfully done!", {
-            id: toastId
+            id: toastId,
           })
         }
       }
@@ -198,7 +238,7 @@ const SendPayment = ({
     } catch (e) {
       setLoading(false)
       toast.error("Error in executing payment, try again", {
-        id: toastId
+        id: toastId,
       })
     }
   }
@@ -206,7 +246,7 @@ const SendPayment = ({
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <button className="rounded-full font-semibold border-none bg-primary px-2 py-1 text-sm text-white shadow-[inset_0px_6px_4px_0px_rgba(255,255,255,0.2)] outline-none focus-visible:outline-none md:px-7 md:py-4 md:text-base">
+        <button className="rounded-full border-none bg-primary px-2 py-1 text-sm font-semibold text-white shadow-[inset_0px_6px_4px_0px_rgba(255,255,255,0.2)] outline-none focus-visible:outline-none md:px-7 md:py-4 md:text-base">
           Send
         </button>
       </DialogTrigger>
@@ -220,56 +260,39 @@ const SendPayment = ({
             <span className="sr-only">Close</span>
           </DialogPrimitive.Close>
         </DialogHeader>
-        <div className="w-full flex flex-col space-y-5">
+        <div className="flex w-full flex-col space-y-5">
           <div className="flex flex-col space-y-4">
             <h3 className="text-xl">Confirm Transaction to</h3>
             <div className="flex items-center space-x-3">
-              <div className="h-8 w-8 rounded-full bg-zinc-600" />
+              {/* replace below image with user avatar */}
+              <Image
+                src={tokenImg}
+                alt="token_image"
+                priority
+                className="rounded-full"
+                width={32}
+                height={32}
+              />
               <span className="w-72 truncate text-lg font-semibold text-primary">
-                {receiver}
+              Steve.Deen@phantom
               </span>
             </div>
           </div>
           <div className="flex flex-col space-y-4">
-            <h3 className="text-xl font-semibold">Chain & Amount</h3>
-            <div className="flex items-center space-x-3">
-            <div className="relative">
-                    <div className="h-8 w-8 flex-shrink-0 rounded-full bg-[#B0C8FE]">
-                      {tokenImg ? (
-                        <Image
-                          src={tokenImg}
-                          alt="token_image"
-                          priority
-                          className="rounded-full"
-                          width={32}
-                          height={32}
-                        />
-                      ) : null}
-                    </div>
-                    <div className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full border border-[3E3ECFF] bg-[#B0C8FE]">
-                      {chainImg ? (
-                        <Image
-                          src={chainImg}
-                          alt="token_image"
-                          priority
-                          className="rounded-full"
-                          width={32}
-                          height={32}
-                        />
-                      ) : null}
-                    </div>
-                  </div>
-              <div className="flex flex-col items-start">
-                <span className="text-lg font-semibold text-primary">
-                  {formatUnits(BigInt(amount), decimals)} {tokenName}
-                </span>
-              </div>
+            <h5 className="text-xl font-semibold">NFT</h5>
+            <div className="w-full flex justify-center">
+            <div className="w-40">
+              <NftCard name='Gadiator123 #1341' creator='by duelist duos' nftImage={nftImage} />
+            </div>
             </div>
           </div>
           {/* pay button */}
-          <button onClick={() => pay()} className="w-full rounded-full bg-primary py-4 text-white flex justify-center items-center">
+          <button
+            onClick={() => pay()}
+            className="flex w-full items-center justify-center rounded-full bg-primary py-4 text-white"
+          >
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            <span>Pay</span>
+            <span>Send</span>
           </button>
         </div>
       </DialogContent>

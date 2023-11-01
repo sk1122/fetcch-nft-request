@@ -23,7 +23,7 @@ const Request = ({
   const receiver = request.recevier.ownerId ?? request.recevier.owner
 
   return (
-    <div className="flex flex-col h-auto w-[47%] md:w-[30%] items-center rounded-[20px] p-2 md:p-6 justify-between border border-primary bg-[#E1EBFF]  shadow-[0px_0px_35px_-9px_rgba(0,0,0,0.25)]">
+    <div className="flex flex-col h-auto w-[47%] md:w-[30%] items-center rounded-[20px] p-2 md:px-5 md:py-4 justify-between border border-primary bg-[#E1EBFF] shadow-[0px_0px_35px_-9px_rgba(0,0,0,0.25)]">
         <div>
         <Image
           src={collection1}
@@ -97,9 +97,9 @@ const PendingRequests = () => {
   return (
     <>
       {true ? (
-        <ScrollArea.Root className="mx-auto mt-7 h-[600px] max-w-4xl overflow-hidden">
-          <ScrollArea.Viewport className="h-full w-full rounded">
-            <div className="flex gap-3 md:gap-8 flex-wrap">
+        <div className="mx-auto mt-7 h-[600px] max-w-4xl overflow-y-auto">
+          <div className="h-full w-full rounded">
+            <div className="flex gap-3 h-full md:gap-8 flex-wrap">
               {/* single request */}
               {requests.map((request: any) => (
                 <>
@@ -108,12 +108,8 @@ const PendingRequests = () => {
                 </>
               ))}
             </div>
-          </ScrollArea.Viewport>
-          <ScrollArea.Scrollbar orientation="vertical">
-            <ScrollArea.Thumb />
-          </ScrollArea.Scrollbar>
-          <ScrollArea.Corner />
-        </ScrollArea.Root>
+          </div>
+        </div>
       ) : (
         <>
           <h3 className="my-8 text-xl">No Pending Requests</h3>

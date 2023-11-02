@@ -253,7 +253,7 @@ const closeRequestNFTModal = () => {
                             src={tokenImg}
                             alt="token_image"
                             priority
-                            className="rounded-full"
+                            className="rounded-full" 
                             width={32}
                             height={32}
                           />
